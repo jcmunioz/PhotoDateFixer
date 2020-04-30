@@ -24,6 +24,34 @@ public class PhotoFixer {
   private String inputDirectoryFromCmdLine = null;
 
   private File askForInputDirectory() throws IOException {
+    File dir = processCmdLine();
+    if (dir == null) {
+      // Request directory from user
+      try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
+        boolean exit;
+        do {
+          System.out.print("Enter the directory containing your photos: ");
+          String inputFolder = reader.readLine();
+          if ("exit".equals(inputFolder)) {
+            log.debug("User decided to exit");
+            System.out.println("Bye");
+            exit = true;
+          } else {
+            dir = new File(inputFolder);
+            if (!dir.isDirectory()) {
+              System.out.format("Directory %s not found%n", inputFolder);
+              exit = false;
+            } else {
+              exit = true;
+            }
+          }
+        } while (!exit);
+      }
+    }
+    return dir;
+  }
+
+  private File processCmdLine() {
     File dir = null;
     if (inputDirectoryFromCmdLine != null) {
       dir = new File(inputDirectoryFromCmdLine);
@@ -31,31 +59,19 @@ public class PhotoFixer {
         return dir;
       } else {
         System.out.format("Directory %s not found%n", inputDirectoryFromCmdLine);
+        return null;
       }
-    }
-
-    try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
-      boolean exit = true;
-      do {
-        System.out.print("Enter the directory containing your photos: ");
-        String inputFolder = reader.readLine();
-        dir = new File(inputFolder);
-        if (! dir.isDirectory()) {
-          System.out.format("Directory %s not found%n", inputFolder);
-        } else {
-          exit = true;
-        }
-      } while (!exit);
     }
     return dir;
   }
 
   public void run() throws Exception {
     File srcDir = askForInputDirectory();
+    if (srcDir == null) {
+      return;
+    }
 
-    for (File photoFile : srcDir.listFiles((file) -> {
-      return file.getName().toLowerCase().endsWith(".jpg") || file.getName().endsWith(".jpeg");
-    })) {
+    for (File photoFile : srcDir.listFiles((file) -> isJpegExtension(file))) {
       log.info("Processing file {}", photoFile.getName());
       try {
         Metadata metadata = JpegMetadataReader.readMetadata(photoFile);
@@ -81,6 +97,11 @@ public class PhotoFixer {
         log.warn("Unable to process {}", photoFile.getName(), e);
       }
     }
+  }
+
+  private boolean isJpegExtension(File file) {
+    String name = file.getName().toLowerCase();
+    return name.endsWith(".jpg") || name.endsWith(".jpeg");
   }
 
   private String formatDate(Date time) {
