@@ -5,4 +5,4 @@
 build
 bin
 build
-/photo_fixer.log
+photo_fixer*.log
